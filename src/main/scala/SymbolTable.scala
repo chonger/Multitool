@@ -71,5 +71,50 @@ class CFGSymbolTable() {
   }
   
   def size : Tuple2[Int,Int] = {(syms.size,terms.size)}
+  
+  def lazyReader(filE : String, doMe : (ParseTree) => Unit) : Unit = {
+    var filedata : List[String] = Nil
+    import java.io.{File,FileReader,BufferedReader}
+    val br = new BufferedReader(new FileReader(new File(filE)))
+    var l = br.readLine()
+    while(l != null) {
+      if(l.length > 0)
+        filedata ::= l
+      l = br.readLine()
+    }
+    br.close()
+    filedata = filedata.reverse
+
+    lazyReader(filedata,doMe)
+  }
+
+  def lazyReader(filedata : List[String], doMe : (ParseTree) => Unit) : Unit = {
+    var ind =0
+    val lastTree = ("" /: filedata)((a,b) => {
+      if(b.charAt(0) != '(') 
+        (a + b) 
+      else {
+        if(a.length > 0) {
+          val tree = growTree(a)  
+          ind += 1
+          doMe(tree)  
+        }
+        b //start a new one off with the new b
+      }
+    })
+    doMe(growTree(lastTree))
+  }
+ 
+  //prints each tree on a single line in full text format
+  def write(filename : String, data : List[ParseTree]) = {
+    println("writing " + data.length + " trees to " + filename + " in treebank format")
+    import java.io.{File,FileWriter,BufferedWriter}
+	var bw = new BufferedWriter(new FileWriter(new File(filename)))
+
+	data.foreach(d => {
+      bw.write(d.fString(this) + "\n")
+    })
+	bw.close
+  }
 
 }

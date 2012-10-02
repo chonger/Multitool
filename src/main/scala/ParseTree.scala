@@ -202,7 +202,7 @@ class ParseTree(val root : NonTerminalNode) {
     }
   }  
   
-  def deepCopy() = new ParseTree(TreeNode.deepCopy(root))
+  def deepCopy() = new ParseTree(TreeTools.deepCopy(root))
   
   def nodes : List[TreeNode] = recGetNodes(root)
   def recGetNodes(n : TreeNode) : List[TreeNode] = {
