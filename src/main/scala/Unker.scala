@@ -145,9 +145,23 @@ class UnkFromData(data : List[ParseTree], st : CFGSymbolTable) extends Unker(st)
 
   override def unk_?(s : PreTerminalNode) = !(lexicon contains s)
   
+
+
   override def unkToken(pt : Int, s : String, pos : Int) : String = {
+
+    def check(s : String) = {
+      lexicon contains new PreTerminalNode(pt,new TerminalNode(st.terms.add(s)))
+    }
+
     var ret = bpUnk(pt,s,pos)
-    ret
+    if(check(ret))
+      ret
+    else { //we're still outside the lexicon
+      if(s(0).isUpper || Character.isTitleCase(s(0)))
+        "UNK-INITC"
+      else
+        "UNK-LC"
+    }
   }
 }
 

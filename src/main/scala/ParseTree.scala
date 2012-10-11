@@ -236,6 +236,12 @@ class ParseTree(val root : NonTerminalNode) {
       case un : UnderspecifiedNode => "*" + sTab.syms(un.symbol) + "*"
     }).mkString(" ")
   }
+
+  def sentence(sTab : CFGSymbolTable, span : (Int,Int)) : String = {
+    val w = terminals.map(x => sTab.terms(x.terminal))
+    val w2 = w.slice(0,span._1) ::: List("[") ::: w.slice(span._1,span._2) ::: List("]") ::: w.drop(span._2)
+    w2.toArray.mkString(" ")
+  }
   
   /**
    *          HASH FUNCTION
@@ -292,8 +298,8 @@ class ParseTree(val root : NonTerminalNode) {
 
   def getTree() : ParseTree = {this}
 
-  def getBNPs(st : CFGSymbolTable) = {
-    nonterminals.filter(x => st.syms(x.symbol) == "NP").filter(y => {
+  def getBNPs(st : CFGSymbolTable) : List[ProtoNode] = {
+    nonterminals.filter(x => st.syms(x.symbol) == "NP").map(_.asInstanceOf[ProtoNode]).filter(y => {
       new ParseTree(y).nonterminals.filter(x => st.syms(x.symbol) == "NP").length == 1
     })
   }

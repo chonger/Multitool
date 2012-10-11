@@ -105,6 +105,12 @@ class CFGSymbolTable() {
     doMe(growTree(lastTree))
   }
  
+  def read(filename : String) = {
+    var trees = List[ParseTree]()
+    lazyReader(filename,(t : ParseTree) => {trees ::= t})
+    trees.reverse
+  }
+
   //prints each tree on a single line in full text format
   def write(filename : String, data : List[ParseTree]) = {
     println("writing " + data.length + " trees to " + filename + " in treebank format")
