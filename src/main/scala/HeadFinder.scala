@@ -13,7 +13,7 @@ class HeadFinder(st : CFGSymbolTable, t : ParseTree) {
         val kidheads = it.children.map(x => recHead(x))
         val sym = st.syms(n.symbol)
         val ksyms = it.children.map(x => st.syms(x.symbol))
-        
+
         val head = kidheads(pickHead(sym,ksyms))       
         headMap += new RefWrapper(n) -> head
         
@@ -39,19 +39,19 @@ class HeadFinder(st : CFGSymbolTable, t : ParseTree) {
   def pickHead(lhs : String, rhs : List[String]) : Int = {
     val res = rhs.map(r => {
       var ret = 8
-      if(pref1 contains (lhs + " " + r))
+      if(HeadFinder.pref1 contains (lhs + " " + r))
         ret = 1
       else if(lhs == rhs)
         ret = 2
-      else if(pref2 contains(lhs + " " + r))
+      else if(HeadFinder.pref2 contains(lhs + " " + r))
         ret = 3
-      else if(pts contains r)
+      else if(HeadFinder.pts contains r)
         ret = 4
       else if(r == "PP")
         ret = 6
-      else if(phrasals contains r)
+      else if(HeadFinder.phrasals contains r)
         ret = 5
-      else if(punc contains r)
+      else if(HeadFinder.punc contains r)
         ret = 7
       ret
     })
@@ -76,6 +76,9 @@ class HeadFinder(st : CFGSymbolTable, t : ParseTree) {
       }
     })
   }
+}
+
+object HeadFinder {
 
   val pref1 = Set("ADJP JJ",
                   "ADJP JJR",

@@ -137,15 +137,13 @@ class WordlistUnker(wordlistFile : String, st : CFGSymbolTable) extends Unker(st
  *  UNK any preterminal that doesnt appear in the data provided 
  *
  */ 
-class UnkFromData(data : List[ParseTree], st : CFGSymbolTable) extends Unker(st) {
+class UnkFromDataPT(data : List[ParseTree], st : CFGSymbolTable) extends Unker(st) {
 
   val lexicon = new scala.collection.mutable.HashSet[PreTerminalNode]()
 
   data.foreach(t => lexicon ++= t.preterminals)
 
   override def unk_?(s : PreTerminalNode) = !(lexicon contains s)
-  
-
 
   override def unkToken(pt : Int, s : String, pos : Int) : String = {
 
@@ -157,6 +155,39 @@ class UnkFromData(data : List[ParseTree], st : CFGSymbolTable) extends Unker(st)
     if(check(ret))
       ret
     else { //we're still outside the lexicon
+      println("Backoff UNKing : " + st.syms(pt) + " -> " + s)
+      if(s(0).isUpper || Character.isTitleCase(s(0)))
+        "UNK-INITC"
+      else
+        "UNK-LC"
+    }
+  }
+}
+
+/**
+ *
+ *  UNK any string that doesnt appear in the data provided 
+ *
+ */ 
+class UnkFromData(data : List[ParseTree], st : CFGSymbolTable) extends Unker(st) {
+
+  val lexicon = new scala.collection.mutable.HashSet[String]()
+
+  data.foreach(t => lexicon ++= t.terminals.map(t => st.terms(t.terminal)))
+
+  override def unk_?(s : PreTerminalNode) = !(lexicon contains st.terms(s.kid.terminal))
+
+  override def unkToken(pt : Int, s : String, pos : Int) : String = {
+
+    def check(s : String) = {
+      lexicon contains s
+    }
+
+    var ret = bpUnk(pt,s,pos)
+    if(check(ret))
+      ret
+    else { //we're still outside the lexicon
+      println("Backoff UNKing : " + st.syms(pt) + " -> " + s)
       if(s(0).isUpper || Character.isTitleCase(s(0)))
         "UNK-INITC"
       else

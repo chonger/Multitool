@@ -2,6 +2,31 @@ package multitool
 
 object BNP {
 
+  def compressTree(t : ParseTree, st : CFGSymbolTable) = {
+   
+    def compressCopy(n : NonTerminalNode) : NonTerminalNode = {
+	  n match {
+	    case ptn : PreTerminalNode => new PreTerminalNode(ptn.symbol,new TerminalNode(ptn.kid.terminal))
+	    case pn : ProtoNode => {
+          if(st.syms(pn.symbol) == "NP") {
+            val n = nnjjcompress(pn,st)
+            new ProtoNode(n.symbol,n.children.map(compressCopy(_)))
+          } else
+            new ProtoNode(pn.symbol,pn.children.map(compressCopy(_)))
+        }
+	    case un : UnderspecifiedNode => {
+	      if(un.assignment != null) 
+	    	new UnderspecifiedNode(un.symbol,compressCopy(un.assignment))
+	      else
+	    	new UnderspecifiedNode(un.symbol,null)
+        }                             
+	  }
+    }
+
+    new ParseTree(compressCopy(t.root))
+
+  }
+
   //compress sequences of NNP/NNPS
   def nnpcompress(n : ProtoNode, st : CFGSymbolTable) : ProtoNode = {
     val newK = (List[NonTerminalNode]() /: n.children)((a,b) => {
