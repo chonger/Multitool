@@ -131,7 +131,9 @@ class RefWrapper(val n : NonTerminalNode) {
 	override def hashCode() : Int = n.hashCode()
 }
 
-abstract class TreeRule(val lhs : Int)
+abstract class TreeRule(val lhs : Int) {
+  def node() : NonTerminalNode
+}
 class ProtoRule(override val lhs : Int, 
 				val children : List[Int]) extends TreeRule(lhs) {
 	 def rhs = children
@@ -145,6 +147,9 @@ class ProtoRule(override val lhs : Int,
 	    case _ => false	
 	  }
 	 }
+  override def node() : NonTerminalNode = {
+    new ProtoNode(lhs,children.map(x => new UnderspecifiedNode(x,null)))
+  }
 }
 class TerminalRule(override val lhs : Int,
 				   val terminal : Int) extends TreeRule(lhs) {
@@ -157,6 +162,9 @@ class TerminalRule(override val lhs : Int,
 	    case _ => false	
 	  }
 	 }
+  override def node() : NonTerminalNode = {
+    new PreTerminalNode(lhs,new TerminalNode(terminal))
+  }
 } 
 
 class ParseTree(val root : NonTerminalNode) {
@@ -259,6 +267,18 @@ class ParseTree(val root : NonTerminalNode) {
   }
   lazy val myHash = root.hashCode
   override def hashCode() : Int = myHash
+  
+  def isPCFG() = (depth() == 1)
+  def depth() = {
+    def recD(n : TreeNode,d : Int) : Int = {
+      n match {
+        case p : PreTerminalNode => 1
+        case un : UnderspecifiedNode => 0
+        case pn : ProtoNode => (0 /: pn.children)((a,b) => math.max(a,recD(b,d+1)))
+      }
+    }
+    recD(root,0)
+  }
 
   def getSpans() : Array[(Int,Int)] = {
     import scala.collection.mutable.{HashMap,HashSet}

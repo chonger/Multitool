@@ -7,8 +7,15 @@ object PTSG {
   def main(args : Array[String]) : Unit = {
 
     val (st,ptsg) = read("/home/chonger/data/PTB/ptbPTSG.txt")
+    //val (st,ptsg) = read("/home/chonger/data/PTB/unnormPCFG.txt")
     
-    val train = XMLDoc.read("/home/chonger/data/PTB/train.unk.xml",st).flatMap(_.text).toList
+    //
+
+  //  val ptsg2 = new PTSG(st,ptsg.rules.map(_.filter(x => isPCFG(x._1))))
+
+//    ptsg2.write("/home/chonger/data/PTB/unnormPCFG.txt")                         
+
+    val train = st.read("/home/chonger/data/PTB/train.debug.txt")
 
     println("ready to train")
 
@@ -19,10 +26,13 @@ object PTSG {
   }
 
   def read(filE : String) : (CFGSymbolTable,PTSG) = {
+    val st = new CFGSymbolTable()
+    (st,read(filE,st))
+  }
+
+  def read(filE : String, st : CFGSymbolTable) : PTSG = {
     
     println("Reading a PTSG from " + filE)
-
-    val st = new CFGSymbolTable()
 
     var lines = io.Source.fromFile(filE).getLines.toArray
 
@@ -48,12 +58,68 @@ object PTSG {
 
     })
 
-    (st,new PTSG(st,rules))
+    new PTSG(st,rules)
+  }
+
+  def mlPCFG(st : CFGSymbolTable, data : List[ParseTree], grammar : List[ParseTree]) = {
+
+    val rules = new HashMap[ParseTree,Double]()
+    val norm = new HashMap[Int,Double]()
+    val smooth = .0001
+    
+    grammar.foreach(g => {
+      rules+= g -> smooth
+      norm(g.root.symbol) = norm.getOrElse(g.root.symbol,0.0) + smooth
+    })
+
+
+    data.foreach(_.nonterminals.foreach(n =>{
+      val nn =  new ParseTree(n.rule.node())
+      rules(nn) = rules.getOrElse(nn,0.0) + 1.0
+      norm(n.symbol) = norm.getOrElse(n.symbol,0.0) + 1.0
+    }))
+
+    rules.iterator.foreach({
+      case (t,c) => {
+        val d = c / norm(t.root.symbol)
+        rules += t -> d
+      }
+    })
+
+    new PTSG(st,rules)
+  }
+
+  def emPTSG(st : CFGSymbolTable, ptsg : PTSG, train : List[ParseTree], nIter : Int) = {
+    val ret = new PTSG(ptsg)
+    ret.em(train,nIter,None)
+    ret
   }
   
 }
 
 class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]) {
+
+  val PT_BOOST = 100
+
+  def this(ptsg : PTSG) = {
+    this(ptsg.st,ptsg.rules.map(r => {
+      val rr = new HashMap[ParseTree,Double]()
+      rr ++= r
+      rr
+    }))
+  }
+
+  def this(st : CFGSymbolTable, rules : HashMap[ParseTree,Double]) = {
+    this(st,{
+      val g = rules.groupBy(_._1.root.symbol)
+      Array.tabulate(st.syms.size)(x => g.getOrElse(x,new HashMap[ParseTree,Double]()))
+    })
+  }
+
+/**  0.until(rules.length).foreach(ind => {
+    val norm = (0.0 /: rules(ind).iterator)(_ + _._2)
+    assert(math.abs(norm - 1.0) < .000001)
+  })*/
 
   lazy val cod = new Compacter(rules.flatMap(_.iterator.map(_._1)).toList)
 
@@ -71,7 +137,7 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     val tt = (0 /: rules)(_ + _.size)
     bw.write(tt + "\n")
 
-    rules.foreach(_.iterator.foreach({
+    rules.foreach(_.iterator.toArray.sortWith(_._2 > _._2).foreach({
       case (t,d) => {
         bw.write(t.fString(st) + "\n" + d + "\n")
       }
@@ -81,14 +147,18 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
   }
 
 
-  def getInsides(tree : ParseTree) = {
+
+  def getInsides(tree : ParseTree,
+                 overlays : HashMap[RefWrapper,List[(ParseTree,List[NonTerminalNode])]]) = {
     val insideMap = new HashMap[RefWrapper,Double]()
 
     def inside(n : NonTerminalNode) : Double = {
-      insideMap.getOrElseUpdate(new RefWrapper(n),{
-        (0.0 /: cod.findOverlays(n))({
+      val rw = new RefWrapper(n)
+      insideMap.getOrElseUpdate(rw,{
+        (0.0 /: overlays(rw))({
           case (a,(t,l)) => {
-            a + (rules(t.root.symbol)(t) /: l)((x,y) => x * inside(y))
+            val p = rules(t.root.symbol)(t) * math.pow(PT_BOOST,t.preterminals.length)
+            a + (p /: l)((x,y) => x * inside(y))
           }
         })
       })
@@ -99,7 +169,9 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     insideMap
   }
 
-  def getOutsides(tree : ParseTree, insideMap : HashMap[RefWrapper,Double]) = {
+  def getOutsides(tree : ParseTree, 
+                  insideMap : HashMap[RefWrapper,Double],
+                  overlays : HashMap[RefWrapper,List[(ParseTree,List[NonTerminalNode])]]) = {
     val outsideMap = new HashMap[RefWrapper,Double]()
 
     outsideMap += new RefWrapper(tree.root) -> 1.0
@@ -107,51 +179,69 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     tree.nonterminals.foreach(n => {
       val rw = new RefWrapper(n)
       val out = outsideMap(rw)
-      cod.findOverlays(n).foreach({
+      overlays(rw).foreach({
         case (t,l) => {
-          val lRW = l.map(ll => new RefWrapper(ll)).toArray
-          val insides = lRW.map(ll => insideMap(ll))
-          val outP = out * rules(t.root.symbol)(t)
-          0.until(lRW.length).foreach(lI => {
+          val lRW = l.map(ll => new RefWrapper(ll)).toArray //refwrappers
+          val insides = lRW.map(ll => insideMap(ll)) // inside probs for ntLeafs
+          val outP = out * rules(t.root.symbol)(t) * math.pow(PT_BOOST,t.preterminals.length) //common rule/outside/terminal prob
+          0.until(insides.length).foreach(lI => { //add in the outside for each ntLeaf
             val myRW = lRW(lI)
-            val newO = (outP /: insides)((a,i) => {
+            val newO = (outP /: 0.until(insides.length))((a,i) => {
               if(i == lI)
                 a
               else
-                a * i
+                a * insides(i)
             })
             outsideMap(myRW) = outsideMap.getOrElse(myRW,0.0) + newO
           })
         }
       })
     })
-
+    
     outsideMap
   }
 
   def score(tree : ParseTree) = {
-    getInsides(tree)(new RefWrapper(tree.root))
+    getInsides(tree,getOverlays(tree))(new RefWrapper(tree.root)) 
   }
 
-  def logL(data : List[ParseTree]) : Double = {
+  def score(tree : ParseTree, ole : OLEMap) = {
+    getInsides(tree,ole)(new RefWrapper(tree.root)) 
+  }
+
+  def logL(data : List[ParseTree], overlayMap : HashMap[RefTree,OLEMap]) : Double = {
     (0.0 /: data)((a,tree) => {
-      val p = score(tree)
+      val p = score(tree,overlayMap(new RefTree(tree)))
       if(p == 0) {
-        a - 300
+        println(tree.pString(st))
+
+        println("NO OVERLAYS AT -- ")
+        overlayMap(new RefTree(tree)).filter(_._2.length == 0).foreach(x => println(x._1.n.toString(st)))
+        
+        tree.nonterminals.foreach(n => {
+          if(! (rules contains new ParseTree(n.rule.node())))
+            println("PCFG UNDEF AT " + n.toString(st))
+        })
+
+        throw new Exception()
       } else {
-        a + math.log(score(tree))
+        a + math.log(p) - math.log(PT_BOOST)*tree.preterminals.length
       }
     })
   }
 
   def em(data : List[ParseTree], iters : Int, conv : Option[Double]) : Unit = {
-    var ll = logL(data)
+
+    val oleMap = new HashMap[RefTree,OLEMap]() 
+    oleMap ++= data.map(x => (new RefTree(x),getOverlays(x)))
+
+    var ll = logL(data,oleMap)
     println("0: " + ll)
     1.to(iters).foreach(i => {
-      emIter(data)
+      emIter(data,oleMap)
       val oLL = ll
-      ll = logL(data)
-      println(i + ":" + ll)
+      ll = logL(data,oleMap)
+      println(i + ": " + ll)
       conv match {
         case Some(d) => {
           if(ll - oLL < d) {
@@ -164,46 +254,68 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     })
   }
 
-  def emIter(data : List[ParseTree]) {
+  def getOverlays(tree : ParseTree) = {
+    val overlays = new OLEMap()
+    overlays ++= tree.nonterminals.map(n => {
+      (new RefWrapper(n),cod.findOverlays(n))
+    })
+    overlays
+  }
+
+  type OLEMap = HashMap[RefWrapper,List[(ParseTree,List[NonTerminalNode])]]
+
+  def emIter(data : List[ParseTree], overlayMap : HashMap[RefTree,OLEMap]) {
+
     val expects = Array.tabulate(rules.length)(x => new HashMap[ParseTree,Double]())
     
     var fails = 0
 
-    data.foreach(tree => {
-      val insideMap = getInsides(tree)
+    data.par.foreach(tree => {
 
+      val overlays = overlayMap(new RefTree(tree))
+
+      val insideMap = getInsides(tree,overlays)
       val norm = insideMap(new RefWrapper(tree.root))
+      val outsideMap = getOutsides(tree,insideMap,overlays)
+        
+      tree.nonterminals.foreach(n => {
+          
+        val rw = new RefWrapper(n)
+        val out = outsideMap(rw)
 
-      if(norm > 0) {
-
-        val outsideMap = getOutsides(tree,insideMap)
-
-        tree.nonterminals.foreach(n => {
-          val rw = new RefWrapper(n)
-          val out = outsideMap(rw)
-          cod.findOverlays(n).foreach({
-            case (t,l) => {
-              val lRW = l.map(ll => new RefWrapper(ll)).toArray
-              val insides = lRW.map(ll => insideMap(ll))
-              val xxx = ((out * rules(t.root.symbol)(t)) /: insides)(_ * _)
+        overlays(rw).foreach({
+          case (t,l) => {
+            val lRW = l.map(ll => new RefWrapper(ll)).toArray
+            val insides = lRW.map(ll => insideMap(ll))
+            val outP = out * rules(t.root.symbol)(t) * math.pow(PT_BOOST,t.preterminals.length) //common rule/outside/terminal prob
+            val xxx = (outP /: insides)(_ * _)
+            synchronized {
               val m = expects(t.root.symbol)
               m(t) = m.getOrElse(t,0.0) + (xxx / norm)
             }
-          })
+          }
         })
-      } else {
-        fails += 1
-      }
-    })
-
-    0.until(rules.length).foreach(ind => {
-      val norm = (0.0 /: expects(ind).iterator)(_ + _._2)
-      expects(ind).foreach({
-        case (t,d) => rules(ind)(t) = d/norm
       })
     })
-    if(fails > 0)
-    println("FAILs : " + fails) 
+
+    val smooth = .0001
+
+    0.until(rules.length).foreach(ind => {
+      val norm = ((smooth*rules(ind).size) /: expects(ind).iterator)(_ + _._2)
+      rules(ind).foreach({
+        case (t,d) => {
+          val ex = expects(ind).getOrElse(t,0.0) + smooth
+          rules(ind)(t) = ex/norm
+        }
+      })
+    })
+/**
+    0.until(rules.length).foreach(ind => {
+      val norm = (0.0 /: rules(ind).iterator)(_ + _._2)
+      assert(math.abs(norm - 1.0) < .000001)
+    })
+*/
+
   }
 
 }
