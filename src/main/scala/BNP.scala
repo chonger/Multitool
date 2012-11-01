@@ -2,7 +2,15 @@ package multitool
 
 object BNP {
 
-  def compressTree(t : ParseTree, st : CFGSymbolTable) = {
+  def compressTree(t : ParseTree, st : CFGSymbolTable) : ParseTree = {
+    compressTree(t,st,nnjjcompress)
+  }
+
+  def compressTreeNNP(t : ParseTree, st : CFGSymbolTable) : ParseTree = {
+    compressTree(t,st,nnpcompress)
+  }
+
+  def compressTree(t : ParseTree, st : CFGSymbolTable, f : (ProtoNode,CFGSymbolTable) => ProtoNode) : ParseTree = {
    
     def compressCopy(n : NonTerminalNode) : NonTerminalNode = {
 	  n match {

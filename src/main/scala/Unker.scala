@@ -9,7 +9,12 @@ object Unker {
     }))
   }
 
-  
+  def nnpunk(dox : Array[XMLDoc[ParseTree]], st : CFGSymbolTable) = {
+    val unker =  new NNPUnker(st)    
+    dox.map(_.map(s => {
+      unker.unkTree(s)
+    }))
+  }
 
 }
 
@@ -107,6 +112,19 @@ abstract class Unker(st : CFGSymbolTable) {
 
 }
 
+
+class NNPUnker(st : CFGSymbolTable) extends Unker(st) {
+
+  val badPTs = List("NNP","NNPS")
+
+  override def unk_?(pn : PreTerminalNode) : Boolean = {
+    val str = st.syms(pn.symbol)
+    badPTs contains str
+  }
+
+  override def unkToken(pt : Int, s : String, pos : Int) : String = "UNK"
+
+}
 
 /**
  *  
