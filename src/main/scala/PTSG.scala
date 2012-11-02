@@ -47,7 +47,7 @@ object PTSG {
     val nTSG = lines(0).toInt
     lines = lines.drop(1)
 
-    val rules = Array.tabulate(nSym)(x => new HashMap[ParseTree,Double]())
+    val rules = Array.tabulate(st.syms.size)(x => new HashMap[ParseTree,Double]())
 
     0.until(nTSG).foreach(x => {
 
@@ -65,7 +65,7 @@ object PTSG {
 
     val rules = new HashMap[ParseTree,Double]()
     val norm = new HashMap[Int,Double]()
-    val smooth = .0001
+    val smooth = 1.0
     
     grammar.foreach(g => {
       rules+= g -> smooth
