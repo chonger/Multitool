@@ -120,10 +120,12 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     })
   }
 
-/**  0.until(rules.length).foreach(ind => {
+  0.until(rules.length).foreach(ind => {
     val norm = (0.0 /: rules(ind).iterator)(_ + _._2)
-    assert(math.abs(norm - 1.0) < .000001)
-  })*/
+    rules(ind).foreach({
+      case (t,d) => rules(ind) += t -> d/norm
+    })
+  })
 
   lazy val cod = new Compacter(rules.flatMap(_.iterator.map(_._1)).toList)
 
