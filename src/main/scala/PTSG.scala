@@ -51,12 +51,16 @@ object PTSG {
 
     0.until(nTSG).foreach(x => {
 
-      val tree = st.growTree(lines(0).trim)
       val d = lines(1).toDouble
+
+      val tree = st.growTree(lines(0).trim)
       rules(tree.root.symbol) += tree -> d
+
       lines = lines.drop(2)
 
     })
+
+    println("PTSG created with " + (0 /: rules)(_ + _.size) + " rules")
 
     new PTSG(st,rules)
   }
@@ -91,7 +95,7 @@ object PTSG {
 
   def emPTSG(st : CFGSymbolTable, ptsg : PTSG, train : List[ParseTree], nIter : Int) = {
     val ret = new PTSG(ptsg)
-    ret.em(train,nIter,None)
+    ret.em(train,nIter,Some(.0001))
     ret
   }
   
@@ -264,6 +268,31 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
 
   type OLEMap = HashMap[RefWrapper,List[(ParseTree,List[NonTerminalNode])]]
 
+  def getEx(tree : ParseTree, overlays : OLEMap) : (List[(ParseTree,Double)],Double) = {
+
+    val insideMap = getInsides(tree,overlays)
+    val norm = insideMap(new RefWrapper(tree.root))
+    val outsideMap = getOutsides(tree,insideMap,overlays)
+    
+    val es = tree.nonterminals.flatMap(n => {
+      
+      val rw = new RefWrapper(n)
+      val out = outsideMap(rw)
+      
+      overlays(rw).map({
+        case (t,l) => {
+          val lRW = l.map(ll => new RefWrapper(ll)).toArray
+          val insides = lRW.map(ll => insideMap(ll))
+          val outP = out * rules(t.root.symbol)(t) * math.pow(PT_BOOST,t.preterminals.length) //common rule/outside/terminal prob
+          val xxx = (outP /: insides)(_ * _)
+          (t,xxx/norm)
+        }
+      }).toList
+    }).toList
+    
+    (es,norm)
+  }
+
   def emIter(data : List[ParseTree], overlayMap : HashMap[RefTree,OLEMap]) {
 
     val expects = Array.tabulate(rules.length)(x => new HashMap[ParseTree,Double]())
@@ -271,31 +300,15 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     var fails = 0
 
     data.par.foreach(tree => {
-
-      val overlays = overlayMap(new RefTree(tree))
-
-      val insideMap = getInsides(tree,overlays)
-      val norm = insideMap(new RefWrapper(tree.root))
-      val outsideMap = getOutsides(tree,insideMap,overlays)
-        
-      tree.nonterminals.foreach(n => {
-          
-        val rw = new RefWrapper(n)
-        val out = outsideMap(rw)
-
-        overlays(rw).foreach({
-          case (t,l) => {
-            val lRW = l.map(ll => new RefWrapper(ll)).toArray
-            val insides = lRW.map(ll => insideMap(ll))
-            val outP = out * rules(t.root.symbol)(t) * math.pow(PT_BOOST,t.preterminals.length) //common rule/outside/terminal prob
-            val xxx = (outP /: insides)(_ * _)
-            synchronized {
-              val m = expects(t.root.symbol)
-              m(t) = m.getOrElse(t,0.0) + (xxx / norm)
-            }
+      val (eee,norm) = getEx(tree,overlayMap(new RefTree(tree)))
+      synchronized {
+        eee.foreach({
+          case(t,p) => {
+            val m = expects(t.root.symbol)
+            m(t) = m.getOrElse(t,0.0) + p
           }
         })
-      })
+      }
     })
 
     val smooth = .0001
@@ -309,12 +322,6 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
         }
       })
     })
-/**
-    0.until(rules.length).foreach(ind => {
-      val norm = (0.0 /: rules(ind).iterator)(_ + _._2)
-      assert(math.abs(norm - 1.0) < .000001)
-    })
-*/
 
   }
 
