@@ -4,27 +4,6 @@ import scala.collection.mutable.HashMap
 
 object PTSG {
 
-  def main(args : Array[String]) : Unit = {
-
-    val (st,ptsg) = read("/home/chonger/data/PTB/ptbPTSG.txt")
-    //val (st,ptsg) = read("/home/chonger/data/PTB/unnormPCFG.txt")
-    
-    //
-
-  //  val ptsg2 = new PTSG(st,ptsg.rules.map(_.filter(x => isPCFG(x._1))))
-
-//    ptsg2.write("/home/chonger/data/PTB/unnormPCFG.txt")                         
-
-    val train = st.read("/home/chonger/data/PTB/train.debug.txt")
-
-    println("ready to train")
-
-    ptsg.em(train,20,None)
-    
-    ptsg.write("/home/chonger/data/PTB/ptbPTSG-EM.txt")
-
-  }
-
   def read(filE : String) : (CFGSymbolTable,PTSG) = {
     val st = new CFGSymbolTable()
     (st,read(filE,st))
@@ -97,9 +76,9 @@ object PTSG {
     new PTSG(st,rules)
   }
 
-  def emPTSG(st : CFGSymbolTable, ptsg : PTSG, train : List[ParseTree], nIter : Int) = {
+  def emPTSG(st : CFGSymbolTable, ptsg : PTSG, train : List[ParseTree], nIter : Int, smooth : Double) = {
     val ret = new PTSG(ptsg)
-    ret.em(train,nIter,Some(.0001))
+    ret.em(train,nIter,Some(.0001),smooth)
     ret
   }
   
@@ -240,7 +219,7 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     })
   }
 
-  def em(data : List[ParseTree], iters : Int, conv : Option[Double]) : Unit = {
+  def em(data : List[ParseTree], iters : Int, conv : Option[Double], smooth : Double) : Unit = {
 
     val oleMap = new HashMap[RefTree,OLEMap]() 
     oleMap ++= data.map(x => (new RefTree(x),getOverlays(x)))
@@ -248,7 +227,7 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     var ll = logL(data,oleMap)
     println("0: " + ll)
     1.to(iters).foreach(i => {
-      emIter(data,oleMap)
+      emIter(data,oleMap,smooth)
       val oLL = ll
       ll = logL(data,oleMap)
       println(i + ": " + ll)
@@ -299,7 +278,7 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     (es,norm)
   }
 
-  def emIter(data : List[ParseTree], overlayMap : HashMap[RefTree,OLEMap]) {
+  def emIter(data : List[ParseTree], overlayMap : HashMap[RefTree,OLEMap], smooth : Double) {
 
     val expects = Array.tabulate(rules.length)(x => new HashMap[ParseTree,Double]())
     
@@ -316,8 +295,6 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
         })
       }
     })
-
-    val smooth = .0001
 
     0.until(rules.length).foreach(ind => {
       val norm = ((smooth*rules(ind).size) /: expects(ind).iterator)(_ + _._2)
