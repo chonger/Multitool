@@ -65,11 +65,15 @@ object PTSG {
     new PTSG(st,rules)
   }
 
-  def mlPCFG(st : CFGSymbolTable, data : List[ParseTree], grammar : List[ParseTree]) = {
+  def mlPCFG(st : CFGSymbolTable, data : List[ParseTree], grammar : List[ParseTree]) : PTSG = {
+    mlPCFG(st,data,grammar,1.0)
+  }
+
+  def mlPCFG(st : CFGSymbolTable, data : List[ParseTree], grammar : List[ParseTree], smooth : Double) : PTSG = {
 
     val rules = new HashMap[ParseTree,Double]()
     val norm = new HashMap[Int,Double]()
-    val smooth = 1.0
+
     
     grammar.foreach(g => {
       rules+= g -> smooth

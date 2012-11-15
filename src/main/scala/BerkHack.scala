@@ -18,7 +18,7 @@ class BerkHack() {
   val lexicon = pData.getLexicon()
   Numberer.setNumberers(pData.getNumbs())
 
-  val substates = false
+  val substates = true
   val parser = new CoarseToFineMaxRuleParser(grammar, lexicon,1.0,-1,substates,substates,false,false, false, true, true)
   //parser.binarization = pData.getBinarization()
 
