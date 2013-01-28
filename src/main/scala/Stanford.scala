@@ -2,11 +2,136 @@ package multitool
 
 import edu.stanford.nlp.parser.lexparser.LexicalizedParser
 import edu.stanford.nlp.ling.Sentence
-import edu.stanford.nlp.trees.{PennTreebankLanguagePack,TreePrint}
+import edu.stanford.nlp.trees.{PennTreebankLanguagePack,TreePrint,Tree}
+import edu.stanford.nlp.parser.lexparser.{TreebankAnnotator,Options}
+import scala.collection.JavaConverters._
 
 import java.io._
 
 object Stanford {
+
+  def main(args : Array[String]) = {
+    //annotate("/home/chonger/data/PTB/train.txt","/home/chonger/data/PTB/stanfordTrain.txt")
+    unannotate("/home/chonger/data/PTB/stanout.txt","/home/chonger/data/PTB/stanout2.txt")
+  }
+
+  def unannotate(path : String, out : String) {
+    val op = new Options()
+    val trees = TreebankAnnotator.getTrees(path,200,219,0,1000)
+    val strees = trees.asScala.toList
+    println(strees.length + " trees")
+    val deannotatedTrees : List[Tree] = TreebankAnnotator.removeDependencyRoots(new TreebankAnnotator(op, path).deannotateTrees(trees)).asScala.toList
+
+    val bw = new BufferedWriter(new FileWriter(out))
+
+    deannotatedTrees.foreach(t => {
+      bw.write(t.pennString().trim.replaceAll("\\s+"," ") + "\n")
+    })
+    
+    bw.close()
+  }
+
+/**
+
+  def unannotate(path : String, out : String) {
+    val st = new CFGSymbolTable() 
+
+    def expandU(n : NonTerminalNode) : NonTerminalNode = {
+      n match {
+        case n : ProtoNode => {
+          val sym = st.syms(n.symbol)
+          if(sym.indexOf("&") == 0) {
+            val parts = sym.split("&").drop(1).map(x => {
+              val iii = x.indexOf("-^") 
+              if(iii >= 0) {
+                x.slice(0,iii)
+              }
+              else x
+            }).reverse
+            val start = new ProtoNode(st.syms.add(parts(0)),n.children.map(nn => expandU(nn)))
+            (start /: parts.drop(1))((a,b) => {
+              new ProtoNode(st.syms.add(b),List(a))
+            })
+          } else 
+            new ProtoNode(n.symbol,n.children.map(nn => expandU(nn)))
+        }
+        case n : PreTerminalNode => {
+          n
+        }
+      }
+    }
+    
+    val trees = st.read(path).map(x => new ParseTree(expandU(x.root)))
+
+    0.until(st.syms.size).foreach(i => {
+      var s = st.syms(i)
+      if(s.indexOf("&") != 0) { // not a unary chain
+        val index = s.indexOf('^')
+        if(index >= 0)
+          s = s.slice(0,index)
+        st.syms.strings(i) = s
+      }
+    })
+
+    import scala.collection.mutable.HashSet
+
+    val hs = new HashSet[String]()
+    hs ++= st.syms.strings
+
+    println(hs.size)
+    hs.iterator.foreach(s => { println(s)})
+
+    st.write(out,trees)
+
+  }
+  *
+  */
+
+  def annotate(path : String, out : String) {
+    val op = new Options()
+    val trees = TreebankAnnotator.getTrees(path,200,219,0,1000)
+    val strees = trees.asScala.toList
+    println(strees.length + " trees")
+    val annotatedTrees : List[Tree] = TreebankAnnotator.removeDependencyRoots(new TreebankAnnotator(op, path).annotateTrees(trees)).asScala.toList
+
+    val bw = new BufferedWriter(new FileWriter(out))
+
+    (strees zip annotatedTrees).foreach({
+      case (t1,t2) => {
+        //println(t1.pennString().trim.replaceAll("\\s+"," "))
+        var s = t2.pennString().trim.replaceAll("\\s+"," ").toCharArray()
+/**
+        var os = s
+        s = ""
+        while(os != s) {
+          val tmp = s
+          s = os.replaceAll("(\\|[^\\s]*)\\s[^\\(]","$1@")
+          println(s)
+          os = tmp
+        }
+        * */
+        var rep = false
+        0.until(s.length-1).foreach(ind => {
+          if(rep) {
+            if(s(ind) == ' ' && s(ind+1) != '(')
+              s(ind) = '@'
+            if(s(ind+1) == '(')
+              rep = false
+          } else {
+            if(s(ind) == '|')
+              rep = true
+          }
+        })
+        val ss = s.mkString("")
+        //println(ss)
+        //readLine()
+        bw.write(ss + "\n")
+      }
+    })
+
+    bw.close()
+  }
+
 
   lazy val tlp = new PennTreebankLanguagePack()
   lazy val lp = LexicalizedParser.loadModel("edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz")

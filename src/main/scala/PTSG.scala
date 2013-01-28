@@ -44,6 +44,10 @@ object PTSG {
     new PTSG(st,rules)
   }
 
+  def mlPCFG(st : CFGSymbolTable, data : List[ParseTree]) : PTSG = {
+    mlPCFG(st,data,TreeTools.cfgSet(data).toList,0.0)
+  }
+
   def mlPCFG(st : CFGSymbolTable, data : List[ParseTree], grammar : List[ParseTree]) : PTSG = {
     mlPCFG(st,data,grammar,1.0)
   }
@@ -52,13 +56,11 @@ object PTSG {
 
     val rules = new HashMap[ParseTree,Double]()
     val norm = new HashMap[Int,Double]()
-
     
     grammar.foreach(g => {
       rules+= g -> smooth
       norm(g.root.symbol) = norm.getOrElse(g.root.symbol,0.0) + smooth
     })
-
 
     data.foreach(_.nonterminals.foreach(n =>{
       val nn =  new ParseTree(n.rule.node())
@@ -83,6 +85,8 @@ object PTSG {
   }
   
 }
+
+
 
 class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]) {
 
@@ -307,5 +311,204 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
     })
 
   }
+
+}
+
+object PCFG {
+
+  def main(args : Array[String]) : Unit = {
+    
+    val mod = "PARENT"
+
+    val inF = "/home/chonger/data/PTB/stanfordTrain.txt.unk"
+    val oF = "/home/chonger/data/PTB/stanfordTrain.pcfg.txt"
+    val oF2 = "/home/chonger/data/PTB/stanfordTrain.pcfgRAW.txt"
+
+    val st = new CFGSymbolTable()
+
+    val treez = st.read(inF)
+    
+    val ptsg = PTSG.mlPCFG(st,treez)
+
+    val pcfg = getFromData(st,treez)
+
+    pcfg.write(oF)
+    ptsg.write(oF2)
+
+  }
+
+  def getFromData(st : CFGSymbolTable, treez : List[ParseTree]) : PTSG = {
+
+    val ptsg = PTSG.mlPCFG(st,treez)
+    val rules = ptsg.rules
+
+    rules.foreach(_.iterator.foreach({
+      case (pt,d) => {
+        assert(pt.depth() == 1)
+      }
+    }))
+
+    var unariesList = rules.flatMap(_.iterator.flatMap({
+      case (pt,d) => {
+        pt.root match {
+          case pn : ProtoNode => {
+            if(pn.children.length == 1) {
+              List(pt)
+            } else
+              Nil
+          }
+          case _ => Nil
+        }
+      }
+    }))
+
+    val uMap = new HashMap[ParseTree,Int]()
+    val cod = new Compacter(unariesList.toList)
+
+    treez.foreach(t => {
+      t.nonterminals.flatMap(n => {
+        cod.findOverlays(n).map(_._1)
+      }).foreach(pt => {
+        uMap(pt) = uMap.getOrElse(pt,0) + 1
+      })
+    })
+
+    val unaries = uMap.iterator.toArray.sortWith(_._2 > _._2)
+
+    println("got " + unaries.length + " unaries")
+
+    unaries.zipWithIndex.foreach({
+      case ((pt,d),i) => {
+        println(i + ": " + pt.fString(st) + " --- " + d)
+      }
+    })
+
+    class GNode(val x : Int) {
+      var mark = true
+      var links = List[Int]()
+      var indegree = 0
+    }
+
+    import scala.collection.mutable.HashSet
+
+    val graph = Array.tabulate(st.syms.size)(x => new GNode(x))
+
+    def check(from : Int, to : Int) : Boolean = {
+
+      val visited = new HashSet[Int]()
+      visited += from 
+      visited += to
+
+      var proc = List[Int](to)
+
+      while(proc.length > 0) {
+        val top = proc(0)
+        proc = proc.drop(1)
+        graph(top).links.foreach(n => {
+          if(visited contains n) {
+            if(n == from)
+              return false
+          } else {
+            proc ::= n
+            visited += n
+          }
+        })
+      }
+
+      true
+
+    }
+    
+    unaries.foreach({
+      case (pt,d) => {
+        val lhs = pt.root.symbol
+        val ks = pt.root.asInstanceOf[ProtoNode].children
+        val rhs = ks(0).symbol 
+        if(lhs != rhs && check(lhs,rhs)) {
+          graph(lhs).links ::= rhs
+          graph(rhs).indegree += 1
+        } else {
+          println("REM - " + pt.fString(st) + " - " + d)
+          rules(pt.root.symbol) -= pt
+        }
+      }
+    })
+
+    rules.foreach(s => {
+      var tot = 0.0
+      s.foreach({
+        case (pt,d) => tot += d
+      })
+
+      s.foreach({
+        case (pt,d) => pt -> d / tot
+      })
+
+    })
+
+    var tsort : List[Int] = List[Int]()
+
+    def proc(nn : Int) : Unit = {
+      val gn = graph(nn)
+      if(gn.mark) {
+        gn.mark = false
+        gn.links.foreach(n => proc(n))
+        tsort ::= gn.x
+      }
+    }
+
+    println("STARTS")
+    graph.filter(_.indegree == 0).foreach(gn => {
+      println(st.syms(gn.x))
+    })
+    println(graph.filter(_.indegree == 0).length + " Starting points")
+
+    graph.filter(_.indegree == 0).foreach(gn => {
+      proc(gn.x)
+    })
+
+    tsort.foreach(x => println(st.syms(x)))
+
+    println(tsort.length)
+    println(st.syms.size)
+
+    rules.foreach(s => {
+      var tot = (0.0 /: s.iterator)(_ + _._2)
+
+      s.foreach({
+        case (pt,d) => s += pt -> d/tot
+      })
+
+    })
+
+    new PCFG(st,rules,tsort.reverse)
+  }
+}
+
+
+class PCFG(st : CFGSymbolTable, rules : Array[HashMap[ParseTree,Double]], val symOrder : List[Int]) extends PTSG(st,rules) {
+
+    override def write(filE : String) = {
+
+      println("Writing a PTSG to " + filE)
+      
+      import java.io._
+
+      val bw = new BufferedWriter(new FileWriter(filE))
+
+      bw.write(st.syms.size + "\n")
+      bw.write(symOrder.map(x => st.syms.strings(x)).toArray.mkString("\n") + "\n")
+
+      val tt = (0 /: rules)(_ + _.size)
+      bw.write(tt + "\n")
+
+      rules.foreach(_.iterator.toArray.sortWith(_._2 > _._2).foreach({
+        case (t,d) => {
+          bw.write(t.fString(st) + "\n" + d + "\n")
+        }
+      }))
+
+      bw.close()
+    }
 
 }

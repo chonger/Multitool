@@ -21,19 +21,24 @@ class Trinarizer(st : CFGSymbolTable) {
     }                
     headInd
   }
+  
+  def makeBar(n : Int, left : Boolean) : Int = {
+	var s = st.syms(n)
+	if(s.indexOf('@') < 0 && s.indexOf('+') < 0) {//not yet a bar
+	  if(left)
+        s = "@" + s
+      else
+        s = "+" + s
+    }
+	st.syms.add(s)
+  }
+
+  def isBarSymbol(nt : NonTerminalNode) : Boolean = {
+    (st.syms(nt.symbol).indexOf('@') >= 0 ||
+     st.syms(nt.symbol).indexOf('+') >= 0)
+  }
 
   def transform(tree : ParseTree) : ParseTree = {	  
-      
-    def makeBar(n : Int, left : Boolean) : Int = {
-	  var s = st.syms(n)
-	  if(s.indexOf('@') < 0 && s.indexOf('+') < 0) {//not yet a bar
-	    if(left)
-          s = "@" + s
-        else
-          s = "+" + s
-      }
-	  st.syms.add(s)
-    }
     
     val hf = new HeadFinder(st,tree)
     
@@ -74,11 +79,6 @@ class Trinarizer(st : CFGSymbolTable) {
  
   def revert(tree : ParseTree) : ParseTree = {
 
-    def isBarSymbol(nt : NonTerminalNode) : Boolean = {
-      (st.syms(nt.symbol).indexOf('@') >= 0 ||
-       st.syms(nt.symbol).indexOf('+') >= 0)
-    }
-
     def rec2(n : NonTerminalNode) : List[NonTerminalNode] = {
       n match {
         case in : InternalNode => {
@@ -117,6 +117,52 @@ class Trinarizer(st : CFGSymbolTable) {
 
 	new ParseTree(recUTri(tree.root)) 
   }  
+
+}
+
+class HBinarizer(st : CFGSymbolTable, lbl : String) extends Trinarizer(st) {
+
+  override def transform(tree : ParseTree) : ParseTree = {	  
+          
+    val hf = new HeadFinder(st,tree)
+    
+    def recBi(n : NonTerminalNode) : NonTerminalNode = {
+      n match {
+	    case pt : PreTerminalNode => pt
+        case nt : InternalNode => {
+    	  val kids = nt.children
+    	  val sym = nt.symbol
+          val str = st.syms(sym)
+          val headInd = getH(tree,hf,nt,None)
+
+          val hStr = st.syms(kids(headInd).symbol)
+          val bSym = lbl match {
+            case "HEAD" => st.syms.add("@" + hStr)
+            case "PARENT" => st.syms.add("@" + str)
+            case "HP" => st.syms.add("@" + hStr + "-" + str)
+            case _ => throw new Exception(lbl + " is not a valid binarizer - [HEAD,PARENT,HP]")
+          }
+          val fst = kids.slice(0,headInd)
+          val khead = new ProtoNode(bSym,List(recBi(kids(headInd))))
+          val lst = kids.drop(headInd + 1)
+         
+          val rtree : NonTerminalNode = (khead /: lst)((a,b) => {
+            new ProtoNode(bSym,List(a,recBi(b)))
+          })
+            
+          val ltree = (rtree /: fst.reverse)((a,b) => {
+            new ProtoNode(bSym,List(recBi(b),a))
+          })
+          
+          new ProtoNode(sym,List(ltree))
+          
+        }
+      }
+    }
+    	
+	new ParseTree(recBi(tree.root))
+    
+  }
 
 }
 

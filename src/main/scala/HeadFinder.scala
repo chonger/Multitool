@@ -41,7 +41,7 @@ class HeadFinder(st : CFGSymbolTable, t : ParseTree) {
       var ret = 8
       if(HeadFinder.pref1 contains (lhs + " " + r))
         ret = 1
-      else if(lhs == rhs)
+      else if(lhs == r)
         ret = 2
       else if(HeadFinder.pref2 contains(lhs + " " + r))
         ret = 3
@@ -55,7 +55,7 @@ class HeadFinder(st : CFGSymbolTable, t : ParseTree) {
         ret = 7
       ret
     })
-    
+
     var best = 9
 
     //this switches to L most if best=1/lhs=PP or best = 2

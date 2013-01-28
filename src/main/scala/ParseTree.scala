@@ -270,14 +270,14 @@ class ParseTree(val root : NonTerminalNode) {
   
   def isPCFG() = (depth() == 1)
   def depth() = {
-    def recD(n : TreeNode,d : Int) : Int = {
+    def recD(n : TreeNode) : Int = {
       n match {
         case p : PreTerminalNode => 1
         case un : UnderspecifiedNode => 0
-        case pn : ProtoNode => (0 /: pn.children)((a,b) => math.max(a,recD(b,d+1)))
+        case pn : ProtoNode => (0 /: pn.children)((a,b) => math.max(a,recD(b)+1))
       }
     }
-    recD(root,0)
+    recD(root)
   }
 
   def getSpans() : Array[(Int,Int)] = {
