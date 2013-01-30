@@ -36,7 +36,26 @@ class HeadFinder(st : CFGSymbolTable, t : ParseTree) {
    * then the Lmost 2, then the Rmost 3-7)
    *
    */ 
-  def pickHead(lhs : String, rhs : List[String]) : Int = {
+  def trimSym(s : String) = {
+    if(s.indexOf("-") == 0)  //for -LRB- -RRB-
+      s
+    else {
+      try {
+        "^[^-^]+".r.findFirstIn(s).get
+      } catch {
+        case _ => {
+            println(s)
+          throw new Exception()
+        }
+      }
+    }
+  }
+
+  def pickHead(lhs1 : String, rhs1 : List[String]) : Int = {
+
+    val lhs = trimSym(lhs1)
+    val rhs = rhs1.map(x => trimSym(x))
+
     val res = rhs.map(r => {
       var ret = 8
       if(HeadFinder.pref1 contains (lhs + " " + r))

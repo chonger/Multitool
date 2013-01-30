@@ -143,7 +143,7 @@ class HBinarizer(st : CFGSymbolTable, lbl : String) extends Trinarizer(st) {
             case _ => throw new Exception(lbl + " is not a valid binarizer - [HEAD,PARENT,HP]")
           }
           val fst = kids.slice(0,headInd)
-          val khead = new ProtoNode(bSym,List(recBi(kids(headInd))))
+          val khead = recBi(kids(headInd))//new ProtoNode(bSym,List(recBi(kids(headInd))))
           val lst = kids.drop(headInd + 1)
          
           val rtree : NonTerminalNode = (khead /: lst)((a,b) => {

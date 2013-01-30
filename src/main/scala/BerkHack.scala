@@ -6,7 +6,11 @@ import edu.berkeley.nlp.util.Numberer
 
 import java.io._
 
-class BerkHack() {
+class BerkHack(val substates : Boolean) {
+
+  def this() = {
+    this(false)
+  }
 
   val gramFile = "src/main/resources/eng_sm6.gr"
 
@@ -17,8 +21,7 @@ class BerkHack() {
   val grammar = pData.getGrammar()
   val lexicon = pData.getLexicon()
   Numberer.setNumberers(pData.getNumbs())
-
-  val substates = true
+  
   val parser = new CoarseToFineMaxRuleParser(grammar, lexicon,1.0,-1,substates,substates,false,false, false, true, true)
   //parser.binarization = pData.getBinarization()
 

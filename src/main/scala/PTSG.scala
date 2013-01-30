@@ -316,26 +316,6 @@ class PTSG(val st : CFGSymbolTable, val rules : Array[HashMap[ParseTree,Double]]
 
 object PCFG {
 
-  def main(args : Array[String]) : Unit = {
-    
-    val mod = "PARENT"
-
-    val inF = "/home/chonger/data/PTB/stanfordTrain.txt.unk"
-    val oF = "/home/chonger/data/PTB/stanfordTrain.pcfg.txt"
-    val oF2 = "/home/chonger/data/PTB/stanfordTrain.pcfgRAW.txt"
-
-    val st = new CFGSymbolTable()
-
-    val treez = st.read(inF)
-    
-    val ptsg = PTSG.mlPCFG(st,treez)
-
-    val pcfg = getFromData(st,treez)
-
-    pcfg.write(oF)
-    ptsg.write(oF2)
-
-  }
 
   def getFromData(st : CFGSymbolTable, treez : List[ParseTree]) : PTSG = {
 
