@@ -1,7 +1,0 @@
-#External Dependencies
-#Wed Mar 13 23:21:22 EDT 2013
-/gpfs/main/home/chonger/code/Multitool/lib/stanford.jar=src/main/scala/Stanford.scala
-/gpfs/main/home/chonger/code/Multitool/lib/opennlp-tools-1.5.0.jar=src/main/scala/OpenNLP.scala
-/gpfs/main/home/chonger/code/Multitool/lib/berkeleyParser.jar=src/main/scala/BerkHack.scala
-/gpfs/main/home/chonger/code/Multitool/project/boot/scala-2.9.0/lib/scala-library.jar=src/main/scala/Annotate.scala\:src/main/scala/OpenNLP.scala\:src/main/scala/ParseTree.scala\:src/main/scala/Binarizer.scala\:src/main/scala/BerkHack.scala\:src/main/scala/Unker.scala\:src/main/scala/PTSG.scala\:src/main/scala/XMLDoc.scala\:src/main/scala/Stanford.scala\:src/main/scala/COD.scala\:src/main/scala/BNP.scala\:src/main/scala/HeadFinder.scala\:src/main/scala/Util.scala\:src/main/scala/SymbolTable.scala
-/usr/lib/jvm/java-6-sun-1.6.0.26/jre/lib/rt.jar=src/main/scala/Annotate.scala\:src/main/scala/OpenNLP.scala\:src/main/scala/ParseTree.scala\:src/main/scala/Binarizer.scala\:src/main/scala/BerkHack.scala\:src/main/scala/Unker.scala\:src/main/scala/PTSG.scala\:src/main/scala/XMLDoc.scala\:src/main/scala/Stanford.scala\:src/main/scala/COD.scala\:src/main/scala/BNP.scala\:src/main/scala/HeadFinder.scala\:src/main/scala/Util.scala\:src/main/scala/SymbolTable.scala
