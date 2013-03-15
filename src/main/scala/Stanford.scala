@@ -11,8 +11,17 @@ import java.io._
 object Stanford {
 
   def main(args : Array[String]) = {
+
+    val st= new CFGSymbolTable()
+    val t = st.growTree("(ROOT (S (NP (DT the) (NN dog)) (VP (VBZ runs))))")
+    initAnnotator("/home/chonger/data/PTB/train.txt")
+    annotate(st,List(t)).foreach(x => {
+      println(x.pString(st))
+    })
+
+
     //annotate("/home/chonger/data/PTB/train.txt","/home/chonger/data/PTB/stanfordTrain.txt")
-    unannotate("/home/chonger/data/PTB/stanout.txt","/home/chonger/data/PTB/stanout2.txt")
+    //unannotate("/home/chonger/data/PTB/stanout.txt","/home/chonger/data/PTB/stanout2.txt")
   }
 
   def unannotate(path : String, out : String) {
@@ -87,17 +96,49 @@ object Stanford {
   *
   */
 
-  def annotate(path : String, out : String) {
+  var annInit = false
+  var stanAnn : TreebankAnnotator = null
+
+  def initAnnotator(treebank : String) = {
     val op = new Options()
-    val trees = TreebankAnnotator.getTrees(path,200,219,0,1000)
-    val strees = trees.asScala.toList
+    stanAnn = new TreebankAnnotator(op, treebank)
+    annInit = true
+  }
+
+  def annotate(st : CFGSymbolTable, in : List[ParseTree]) : List[ParseTree] = {
+
+    import edu.stanford.nlp.trees._
+    import edu.stanford.nlp.ling.WordFactory
+
+    if(!annInit) {
+      throw new Exception("Stanford Annotator not initialized")
+    }
+      
+    val inStr = in.map(x => x.fString(st) + "\n").toArray.mkString("")
+
+    val treader = new PennTreeReader(new StringReader(inStr),new LabeledScoredTreeFactory(new WordFactory()),new BobChrisTreeNormalizer())
+      
+      
+    var strees = List[Tree]()
+
+    var ttt = treader.readTree()
+    while(ttt != null) {
+      strees ::= ttt
+      ttt = treader.readTree()
+    }
+
+
+    import scala.collection.JavaConversions._
+    import scala.collection.mutable.ListBuffer
+
+    val trees : java.util.List[Tree] = ListBuffer( strees.reverse : _*)
+
     println(strees.length + " trees")
-    val annotatedTrees : List[Tree] = TreebankAnnotator.removeDependencyRoots(new TreebankAnnotator(op, path).annotateTrees(trees)).asScala.toList
+    val annotatedTrees : List[Tree] = TreebankAnnotator.removeDependencyRoots(stanAnn.annotateTrees(trees)).asScala.toList
 
-    val bw = new BufferedWriter(new FileWriter(out))
+//    val bw = new BufferedWriter(new FileWriter(out))
 
-    (strees zip annotatedTrees).foreach({
-      case (t1,t2) => {
+    annotatedTrees.map(t2 => {
         //println(t1.pennString().trim.replaceAll("\\s+"," "))
         var s = t2.pennString().trim.replaceAll("\\s+"," ").toCharArray()
 /**
@@ -125,11 +166,11 @@ object Stanford {
         val ss = s.mkString("")
         //println(ss)
         //readLine()
-        bw.write(ss + "\n")
-      }
+        st.growTree(ss)
+
     })
 
-    bw.close()
+
   }
 
 
@@ -228,6 +269,8 @@ object Stanford {
 
       var kids = List[NonTerminalNode]()
 
+      
+
       if(rights.length > 0) {
         //kids ::= new ProtoNode(st.syms.add(mySym + "-R"),rights)
         kids ::= makeR(rights)
@@ -236,9 +279,14 @@ object Stanford {
       kids ::= new PreTerminalNode(st.syms.add(mySym),new TerminalNode(st.terms.add(myW)))
 
       if(lefts.length > 0) {
-        //kids ::= new ProtoNode(st.syms.add(mySym + "-L"),lefts)
-        kids ::= makeL(lefts)
+        if(rights.length > 0) {
+          kids = List(makeL(lefts),new ProtoNode(st.syms.add(mySym + "-RL"),kids))
+        } else {
+          //kids ::= new ProtoNode(st.syms.add(mySym + "-L"),lefts)
+          kids ::= makeL(lefts)
+        }
       }
+
       val rStr = if(t.indexOf("'") > 0) {rT + "_prime"} else rT
 
       new ProtoNode(st.syms.add(rStr),kids)

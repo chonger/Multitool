@@ -447,11 +447,12 @@ object PCFG {
       proc(gn.x)
     })
 
+/**
     tsort.foreach(x => println(st.syms(x)))
 
     println(tsort.length)
     println(st.syms.size)
-
+*/
     rules.foreach(s => {
       var tot = (0.0 /: s.iterator)(_ + _._2)
 

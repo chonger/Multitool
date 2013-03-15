@@ -1,0 +1,4 @@
+#Classes with main methods
+#Wed Mar 13 23:21:21 EDT 2013
+src/main/scala/Annotate.scala=multitool.PA
+src/main/scala/Stanford.scala=multitool.Stanford

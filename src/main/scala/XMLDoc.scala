@@ -23,6 +23,10 @@ class XMLDoc[A](val text : List[A], val meta : Array[(String,String)]) {
     new XMLDoc[B](text.map(func),meta)
   }
 
+  def flatMap[B](func : (A) => List[B]) = {
+    new XMLDoc[B](text.flatMap(func),meta)
+  }
+
 }
 
 object XMLDoc {

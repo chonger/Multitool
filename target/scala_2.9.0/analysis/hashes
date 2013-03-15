@@ -1,0 +1,16 @@
+#Source Hashes
+#Wed Mar 13 23:21:21 EDT 2013
+src/main/scala/Binarizer.scala=3b4675de02e93afcb917cde2f33123aea4b9c3bb
+src/main/scala/SymbolTable.scala=12397c4c85bfffca428fc395954945c6667315aa
+src/main/scala/XMLDoc.scala=2d59b5b82679f3700821c962d27a5abfd0cebaa6
+src/main/scala/COD.scala=b601a0ebbbbdd6535d8317cc358145ae29337874
+src/main/scala/Unker.scala=1862562189894718e9731bceb72e6e19b0aa31be
+src/main/scala/Annotate.scala=a3add8e02b89ec920cce5a7ac67d013b665cae41
+src/main/scala/ParseTree.scala=b66784abbbc922cf14b44c65fa2a66b7ef20e1cb
+src/main/scala/OpenNLP.scala=55e1234d438fd225bc19e50cf364ed35c793f10a
+src/main/scala/BNP.scala=f7cd5544de7c9b27defdb19e4feaa9bd1025c60b
+src/main/scala/PTSG.scala=6664cd1a4805b828a2f4a4fafeede178c4391876
+src/main/scala/HeadFinder.scala=555e2d1ea418f257e246c49713dd40a38ccec76e
+src/main/scala/Stanford.scala=5a5ffbb0bacee3f1b057804ff19ed20352b6affe
+src/main/scala/Util.scala=a2b7e77bc43333e5a856830b9411272198f82593
+src/main/scala/BerkHack.scala=001fd48a6e30e36db7228a6a83fc50f9332c796d
