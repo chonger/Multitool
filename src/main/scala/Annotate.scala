@@ -1,23 +1,5 @@
 package multitool
 
-object PA {
-  
-  def main(args : Array[String]) : Unit = {
-    val st = new CFGSymbolTable()
-    val trees = st.read("/home/chonger/data/PTB/train.txt")
-    val pa = new ParentAnnotate(trees,st)
-    println(pa.doAnn.size)
-    pa.doAnn.iterator.foreach(x => {
-      println(x)
-    })
-    trees.foreach(t => {
-      println(pa(t).pString(st))
-      readLine()
-    })
-  }
-
-}
-
 class UnaryAnnotate(st : CFGSymbolTable) {
 
   def apply(tree : ParseTree) : ParseTree = {

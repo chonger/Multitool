@@ -3,22 +3,6 @@ package multitool
 import scala.collection.mutable.{HashSet,HashMap}
 
 object SmallestCover {
-
-
-  def main(args : Array[String]) = {
-
-    val st = new CFGSymbolTable()
-    
-    val t1 = st.growTree("(R (S (X <>) (Y <>)) (B <>))")
-    //val t1 = st.growTree("(S (X <>) (Y <>))")
-
-    val t2 = st.growTree("(S (X <>) (Y (Z <>)))")
-    
-    val sc = apply(t1,t2)
-
-    println(sc.pString(st))
-
-  }
   
   def apply(a : ParseTree, b : ParseTree) : ParseTree = {
 

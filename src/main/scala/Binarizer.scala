@@ -134,7 +134,6 @@ class HBinarizer(st : CFGSymbolTable, lbl : String) extends Trinarizer(st) {
     	  val sym = nt.symbol
           val str = st.syms(sym)
           val headInd = getH(tree,hf,nt,None)
-
           val hStr = st.syms(kids(headInd).symbol)
           val bSym = lbl match {
             case "HEAD" => st.syms.add("@" + hStr)

@@ -1,6 +1,14 @@
 package multitool
 
-object BNP {
+/**
+ *
+ *  In order to find syntactic patterns, it can help to collapse Base Noun Plrases
+ *
+ *
+ * 
+ */ 
+
+object BaseNounPhraseCompressor {
 
   def compressTree(t : ParseTree, st : CFGSymbolTable) : ParseTree = {
     compressTree(t,st,nnjjcompress)
