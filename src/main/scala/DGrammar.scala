@@ -9,7 +9,6 @@ class Token(val word : String,val stem : String,
 class DGrammar() {
   import scala.collection.mutable.HashMap
 
-
   /**
    * this map stores the Token to index mapping and in Scala also provides the function for its use
    */
@@ -25,7 +24,6 @@ class DGrammar() {
 
   def transformTokens(mapFile : String) = {
     val mapLines = io.Source.fromFile(mapFile).getLines.toList.map(_.split("\\s")).map(x => {
-      //println(x.toArray.mkString(","))
       (x(0).replaceAll("\\(","LRB").replaceAll("\\)","RRB"),x(1))
     })
     val mapMap = new HashMap[String,String]() ++ mapLines
@@ -63,32 +61,27 @@ class DGrammar() {
    * Load trees in CONLL-X format from filE
   */
 
-  def readCONLLTrees(filE : String) : List[DTree] = {
+  def readCONLLTrees(lines : Iterator[String]) : List[DTree] = {
 
     var nTreez = 0
     var trees : List[DTree] = Nil
     var curNodes : List[DNode] = Nil
-    import java.io.{BufferedReader,FileReader,File}
-    val br = new BufferedReader(new FileReader(new File(filE)))
-    var line = br.readLine()
     
     var error = 0 
     var good = 0
 
-    while(line != null) {
-      //println(line)
+    while(lines.hasNext) {
+      var line = lines.next() 
       var parts = line.replaceAll("\\n","").replaceAll("\\(","LRB").replaceAll("\\)","RRB").split('\t')
-      line = br.readLine()
 
       if(parts.length == 1) {
         try {
           nTreez += 1
-          //curNodes.map(x => println(x))
           trees ::= new DTree(curNodes.toArray.reverse)
           good += 1
         } catch {
           case i : Exception => {
-            println(nTreez)
+            System.err.println("Error creating tree number " + nTreez)
             error += 1
           }
         }
@@ -103,16 +96,14 @@ class DGrammar() {
             curNodes ::= new DNode(ind.toInt-1,tindex,nph.toInt-1,nphrel,phi,phrel)
           }
           case _ => {
-            println("This is not a good line!")
-            println(line)
-            println(parts.length)
+            System.err.println("This is not a good line!")
+            System.err.println(line)
           }
         }
       }
     }
-    br.close()
-    println("Read " + trees.length + " trees")
-    println("ERR " + error + " GOOD " + good)
+
+    System.err.println("Read " + trees.length + " trees, with " + error + " errors")
     trees.reverse
   }
 

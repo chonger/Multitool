@@ -1,24 +1,33 @@
 package multitool
 
+/**
+ * 
+ *  Input Types
+ *    - CONNL
+ *    - TreeBank
+ *
+ *  Operations
+ *    - convert format
+ *    - un/binarize (TB)
+ *    - unker (Both)
+ *    - annotate (TB)
+ *
+ *
+ */ 
 
 
 object Main {
 
   def main(args : Array[String]) = {
 
-    val inFile = args(0)
-    val outFile = args(1)
-
     val dg = new DGrammar()
     val st = new CFGSymbolTable()
 
-    val dtrees = dg.readCONLLTrees(inFile)
-   
-    val ctrees = dtrees.map(d => {
-      d.toConstit(dg,st)
-    })
+    val dtrees = dg.readCONLLTrees(io.Source.stdin.getLines())
 
-    st.write(outFile,ctrees)
+    dtrees.map(_.toConstit(dg,st)).foreach(t => {
+      println(t.fString(st))
+    })
 
   }
 
