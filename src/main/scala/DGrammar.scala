@@ -66,12 +66,14 @@ class DGrammar() {
     var nTreez = 0
     var trees : List[DTree] = Nil
     var curNodes : List[DNode] = Nil
-    
+    var lastLines : List[String] = Nil
+
     var error = 0 
     var good = 0
 
     while(lines.hasNext) {
       var line = lines.next() 
+      lastLines ::= line
       var parts = line.replaceAll("\\n","").replaceAll("\\(","LRB").replaceAll("\\)","RRB").split('\t')
 
       if(parts.length == 1) {
@@ -82,9 +84,14 @@ class DGrammar() {
         } catch {
           case i : Exception => {
             System.err.println("Error creating tree number " + nTreez)
+            System.err.println(i)
+            lastLines.reverse.foreach(l => {
+              System.err.println(l)
+            })
             error += 1
           }
         }
+        lastLines = Nil
         curNodes = Nil
       } else {
         parts match {

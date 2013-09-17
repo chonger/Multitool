@@ -120,29 +120,26 @@ class DTree(val nodes : Array[DNode]) {
   
   def toConstit(dg : DGrammar, st : CFGSymbolTable) = {
 
-
     val deps = nodes.groupBy(_.phead)
 
     def makeNode(d : DNode) : NonTerminalNode = {
-      
-
 
       val tok = dg(d.token)
       val mySym = tok.pos
       val myW = tok.word
 
-      def makeR(k : List[NonTerminalNode]) : ProtoNode = {
-        if(k.length == 1) 
-          new ProtoNode(st.syms.add(mySym + "-R"),k)
-        else
-          new ProtoNode(st.syms.add(mySym + "-R"),List(makeR(k.slice(0,k.length-1)),k(k.length-1)))
-      }
-
       def makeL(k : List[NonTerminalNode]) : ProtoNode = {
         if(k.length == 1) 
           new ProtoNode(st.syms.add(mySym + "-L"),k)
         else
-          new ProtoNode(st.syms.add(mySym + "-L"),List(k(0),makeR(k.drop(1))))
+          new ProtoNode(st.syms.add(mySym + "-L"),List(makeL(k.slice(0,k.length-1)),k(k.length-1)))
+      }
+
+      def makeR(k : List[NonTerminalNode]) : ProtoNode = {
+        if(k.length == 1) 
+          new ProtoNode(st.syms.add(mySym + "-R"),k)
+        else
+          new ProtoNode(st.syms.add(mySym + "-R"),List(k(0),makeR(k.drop(1))))
       }
 
 
@@ -166,6 +163,7 @@ class DTree(val nodes : Array[DNode]) {
 
 
     new ParseTree(new ProtoNode(st.syms.add("ROOT"),List(makeNode(root))))
+    
   }
 
 

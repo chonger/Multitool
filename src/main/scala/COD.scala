@@ -178,8 +178,6 @@ class CompactTree() {
 
   def findCompatible(targNode : NonTerminalNode) : HashMap[RefTree,List[RefWrapper]] = {
 
-    //println("call")
-
     var ret = new HashMap[RefTree,List[RefWrapper]]()
     endsHere.foreach(e => {
       ret += e -> List(new RefWrapper(targNode))
@@ -230,10 +228,7 @@ class CompactTree() {
       }
     }
     //end of case
-/**
-    println("Checked this subtree")
-    println(PCFGPrinter.treeToString(Compacter.pcfg,new ParseTree(targNode.asInstanceOf[NonTerminalNode])))
-*/
+
     ret
 
 
