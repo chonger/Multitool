@@ -125,7 +125,7 @@ class DTree(val nodes : Array[DNode]) {
     def makeNode(d : DNode) : NonTerminalNode = {
 
       val tok = dg(d.token)
-      val mySym = tok.pos
+      val mySym = tok.cPos
       val myW = tok.word
 
       def makeL(k : List[NonTerminalNode]) : ProtoNode = {
