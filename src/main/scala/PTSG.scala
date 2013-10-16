@@ -62,10 +62,13 @@ object PTSG {
       norm(g.root.symbol) = norm.getOrElse(g.root.symbol,0.0) + smooth
     })
 
-    data.foreach(_.nonterminals.foreach(n =>{
-      val nn =  new ParseTree(n.rule.node())
-      rules(nn) = rules.getOrElse(nn,0.0) + 1.0
-      norm(n.symbol) = norm.getOrElse(n.symbol,0.0) + 1.0
+    data.foreach(_.nonterminals.foreach({
+      case un : UnderspecifiedNode => {}
+      case n : NonTerminalNode => {
+        val nn =  new ParseTree(n.rule.node())
+        rules(nn) = rules.getOrElse(nn,0.0) + 1.0
+        norm(n.symbol) = norm.getOrElse(n.symbol,0.0) + 1.0
+      }
     }))
 
     rules.iterator.foreach({
